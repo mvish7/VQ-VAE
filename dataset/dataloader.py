@@ -1,10 +1,9 @@
 import torch
 import numpy as np
-from sympy.printing.pytorch import torch
 from torch.utils.data import DataLoader, Dataset
 from datasets import load_from_disk
 
-class TrajDataset:
+class TrajDataset(Dataset):
     # datasets.config.IN_MEMORY_MAX_SIZE = 16000
     def __init__(self, root_path: str = "/dataset", split: str = "train"):
         self.traj_data = load_from_disk(root_path)[split]
@@ -25,5 +24,5 @@ class TrajDataset:
         # converting 3x3 rotation matrix to 6d rotation (gram schmidt)
         ego_rot = self.convert_rot_mat_to_6d(ego_rot)
         # 64 x 9 for each sample
-        feature = torch.cat((ego_xyz, ego_rot), dim=1)
+        feature = torch.cat((torch.tensor(ego_xyz), ego_rot), dim=1).T
         return feature
