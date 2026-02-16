@@ -5,8 +5,9 @@ from datasets import load_from_disk
 
 class TrajDataset(Dataset):
     # datasets.config.IN_MEMORY_MAX_SIZE = 16000
-    def __init__(self, root_path: str = "/dataset", split: str = "train"):
+    def __init__(self, root_path: str = "/dataset", split: str = "train", portion: float = 0.1):
         self.traj_data = load_from_disk(root_path)[split]
+        self.traj_data = self.traj_data.select(range(int(len(self.traj_data) * portion)))
 
     def __len__(self):
         return len(self.traj_data)
