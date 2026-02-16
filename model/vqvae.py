@@ -73,21 +73,16 @@ class TrajectoryVQVAE(nn.Module):
         # Decode
         reconstruction = self.decoder(z_q)
 
-        # Calculate losses (training only)
-        reconstruction_loss = torch.tensor(0.0, device=x.device)
-        dynamics_loss = torch.tensor(0.0, device=x.device)
-        total_loss = torch.tensor(0.0, device=x.device)
+        # Calculate losses (both train and eval for monitoring)
+        reconstruction_loss = F.smooth_l1_loss(reconstruction, x)
+        dynamics_loss = self._compute_dynamics_loss(reconstruction, x)
 
-        if self.training:
-            reconstruction_loss = F.smooth_l1_loss(reconstruction, x)
-            dynamics_loss = self._compute_dynamics_loss(reconstruction, x)
-
-            # Total loss: L = L_rec + λ * L_dyn + β * L_commit
-            total_loss = (
-                reconstruction_loss
-                + self.dynamics_weight * dynamics_loss
-                + commitment_loss
-            )
+        # Total loss: L = L_rec + λ * L_dyn + β * L_commit
+        total_loss = (
+            reconstruction_loss
+            + self.dynamics_weight * dynamics_loss
+            + commitment_loss
+        )
 
         return {
             "loss": total_loss,

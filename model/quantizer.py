@@ -87,8 +87,14 @@ class VectorQuantizerEMA(nn.Module):
         quantized_flat = torch.matmul(encodings, self.embeddings)
         quantized = quantized_flat.view(batch_size, seq_len, self.embedding_dim)
 
-        loss = torch.tensor(0.0, device=z.device)
-        perplexity = 0.0
+        # Commitment loss — needed for both train and eval metrics
+        e_latent_loss = F.mse_loss(quantized.detach(), z)
+        loss = self.commitment_cost * e_latent_loss
+
+        # Perplexity (codebook utilization) — needed for both train and eval metrics
+        with torch.no_grad():
+            avg_probs = torch.mean(encodings, dim=0)
+            perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10))).item()
 
         if self.training:
             # EMA updates — must be no_grad to avoid graph accumulation through buffers
@@ -96,17 +102,8 @@ class VectorQuantizerEMA(nn.Module):
                 self._update_ema(flat_z, encodings)
                 self._restart_dead_codes(flat_z)
 
-            # Commitment loss
-            e_latent_loss = F.mse_loss(quantized.detach(), z)
-            loss = self.commitment_cost * e_latent_loss
-
             # Straight-Through Estimator: copy gradients from decoder to encoder
             quantized = z + (quantized - z).detach()
-
-            # Perplexity (codebook utilization) — no_grad since it's a metric only
-            with torch.no_grad():
-                avg_probs = torch.mean(encodings, dim=0)
-                perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10))).item()
 
         # (B, T, D) -> (B, D, T)
         quantized = quantized.permute(0, 2, 1).contiguous()
