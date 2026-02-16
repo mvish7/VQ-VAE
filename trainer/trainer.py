@@ -57,6 +57,8 @@ class Trainer:
 
         for epoch in range(self.start_epoch, self.epochs):
             train_metrics = self._train_epoch(epoch)
+            if torch.cuda.is_available():
+                torch.cuda.empty_cache()
             val_metrics = self._validate(epoch)
 
             self.scheduler.step()
@@ -90,34 +92,11 @@ class Trainer:
         num_batches = 0
 
         for i, batch in enumerate(self.train_loader):
-            batch = batch.to(self.device)
-            output = self.model(batch)
-            loss = output["loss"]
+            metrics = self._train_batch(batch)
 
-            self.optimizer.zero_grad()
-            loss.backward()
-            if self.grad_clip > 0:
-                nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
-            self.optimizer.step()
-
-            # Accumulate metrics
-            metrics = {
-                "loss": output["loss"].item(),
-                "reconstruction_loss": output["reconstruction_loss"].item(),
-                "dynamics_loss": output["dynamics_loss"].item(),
-                "commitment_loss": output["commitment_loss"].item(),
-                "perplexity": output["perplexity"],
-            }
             for k, v in metrics.items():
                 accum[k] = accum.get(k, 0.0) + v
             num_batches += 1
-
-            # Step-level tensorboard
-            self.writer.add_scalar("step/loss", metrics["loss"], self.global_step)
-            self.writer.add_scalar("step/reconstruction_loss", metrics["reconstruction_loss"], self.global_step)
-            self.writer.add_scalar("step/commitment_loss", metrics["commitment_loss"], self.global_step)
-            self.writer.add_scalar("step/perplexity", metrics["perplexity"], self.global_step)
-            self.global_step += 1
 
             # Periodic console log
             if (i + 1) % self.log_interval == 0:
@@ -131,6 +110,40 @@ class Trainer:
                 )
 
         return {k: v / num_batches for k, v in accum.items()}
+
+    def _train_batch(self, batch) -> dict[str, float]:
+        """Run a single batch."""
+
+        batch = batch.to(self.device)
+        output = self.model(batch)
+        loss = output["loss"]
+
+        self.optimizer.zero_grad()  # set_to_none=True
+        loss.backward()
+        if self.grad_clip > 0:
+            nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
+        self.optimizer.step()
+
+        # Extract scalar metrics before releasing the computation graph
+        metrics = {
+            "loss": loss.item(),
+            "reconstruction_loss": output["reconstruction_loss"].item(),
+            "dynamics_loss": output["dynamics_loss"].item(),
+            "commitment_loss": output["commitment_loss"].item(),
+            "perplexity": output["perplexity"],
+        }
+
+        # Release computation graph and GPU memory immediately
+        del output, loss, batch
+
+        # Step-level tensorboard
+        self.writer.add_scalar("step/loss", metrics["loss"], self.global_step)
+        self.writer.add_scalar("step/reconstruction_loss", metrics["reconstruction_loss"], self.global_step)
+        self.writer.add_scalar("step/commitment_loss", metrics["commitment_loss"], self.global_step)
+        self.writer.add_scalar("step/perplexity", metrics["perplexity"], self.global_step)
+        self.global_step += 1
+
+        return metrics
 
     @torch.no_grad()
     def _validate(self, epoch: int) -> dict[str, float]:
