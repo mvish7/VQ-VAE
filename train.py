@@ -12,9 +12,15 @@ from trainer import Trainer
 # ── Config ──────────────────────────────────────────────────────────
 config = {
     # Data
-    "dataset_path": "/media/vishal/datasets/ar1_vae_dataset1/",
-    "batch_size": 64,
-    "num_workers": 4,
+    "dataset_path": "/media/vishal/datasets/ar1_vae_dataset/",
+    "batch_size": 512,
+    "num_workers": 6,
+    "train_portion": 1.0,  # how to train data to usr?
+    "val_portion": 0.5,  # how much val data to use?
+    "augment": True,
+    "aug_prob": 0.2,
+    "max_rot_deg": 2.0,
+    "noise_std": 1e-4,
     # Model
     "in_channels": 9,
     "hidden_dim": 256,
@@ -35,8 +41,8 @@ config = {
 }
 
 # ── Data ────────────────────────────────────────────────────────────
-train_set = TrajDataset(config["dataset_path"], split="train")
-val_set = TrajDataset(config["dataset_path"], split="test")
+train_set = TrajDataset(config["dataset_path"], split="train", portion=config["train_portion"], augment=config["augment"], aug_prob=config["aug_prob"], max_rot_deg=config["max_rot_deg"], noise_std=config["noise_std"])
+val_set = TrajDataset(config["dataset_path"], split="test", portion=config["val_portion"], augment=False)
 
 train_loader = DataLoader(
     train_set,
