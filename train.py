@@ -38,6 +38,7 @@ config = {
     # Paths
     "checkpoint_dir": "checkpoints",
     "log_dir": "runs",
+    "resume_from": "/media/vishal/workspace/projects/VQ-VAE/checkpoints/batch512_aug02_epoch39_perp819/best.pt",  # Set to a path like "checkpoints/last.pt" to resume
 }
 
 # ── Data ────────────────────────────────────────────────────────────
@@ -91,4 +92,4 @@ trainer = Trainer(
     device=device,
 )
 
-trainer.train()
+trainer.train(resume_from=config["resume_from"])
