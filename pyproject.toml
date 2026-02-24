@@ -1,0 +1,18 @@
+[project]
+name = "vq-vae"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "datasets>=4.5.0",
+    "loguru>=0.7.3",
+    "numpy>=2.4.2",
+    "pytest>=9.0.2",
+    "setuptools>=82.0.0",
+    "tensorboard>=2.20.0",
+    "torch>=2.10.0",
+]
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
