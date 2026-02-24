@@ -47,6 +47,7 @@ class Trainer:
     def train(self, resume_from: str | None = None) -> None:
         """Run full training loop."""
         if resume_from:
+            logger.info(f"Resuming from {resume_from}")
             self._load_checkpoint(resume_from)
 
         logger.info(

@@ -38,7 +38,7 @@ config = {
     # Paths
     "checkpoint_dir": "checkpoints",
     "log_dir": "runs",
-    "resume_from": "/media/vishal/workspace/projects/VQ-VAE/checkpoints/batch512_aug02_epoch39_perp819/best.pt",  # Set to a path like "checkpoints/last.pt" to resume
+    "resume_from": "/media/vishal/workspace/projects/VQ-VAE/checkpoints/batch512_aug02_epoch60_perp820/best.pt",  # Set to a path like "checkpoints/last.pt" to resume
 }
 
 # ── Data ────────────────────────────────────────────────────────────
