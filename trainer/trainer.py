@@ -107,6 +107,7 @@ class Trainer:
                     f"recon={metrics['reconstruction_loss']:.4f} | "
                     f"dyn={metrics['dynamics_loss']:.4f} | "
                     f"commit={metrics['commitment_loss']:.4f} | "
+                    f"uc={metrics['unit_circle_loss']:.4f} | "
                     f"perp={metrics['perplexity']:.1f}"
                 )
 
@@ -131,6 +132,7 @@ class Trainer:
             "reconstruction_loss": output["reconstruction_loss"].item(),
             "dynamics_loss": output["dynamics_loss"].item(),
             "commitment_loss": output["commitment_loss"].item(),
+            "unit_circle_loss": output["unit_circle_loss"].item(),
             "perplexity": output["perplexity"],
         }
 
@@ -162,6 +164,7 @@ class Trainer:
                 "reconstruction_loss": output["reconstruction_loss"].item(),
                 "dynamics_loss": output["dynamics_loss"].item(),
                 "commitment_loss": output["commitment_loss"].item(),
+                "unit_circle_loss": output["unit_circle_loss"].item(),
                 "perplexity": output["perplexity"],
             }
             for k, v in metrics.items():
