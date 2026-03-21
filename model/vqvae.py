@@ -18,7 +18,7 @@ class TrajectoryVQVAE(nn.Module):
 
     def __init__(
         self,
-        in_channels: int = 9,
+        in_channels: int = 5,
         hidden_dim: int = 256,
         num_embeddings: int = 1024,
         embedding_dim: int = 256,
@@ -29,7 +29,7 @@ class TrajectoryVQVAE(nn.Module):
         """Initialize TrajectoryVQVAE.
         
         Args:
-            in_channels: Number of trajectory channels [x,y,z,r1_x,r1_y,r1_z,r2_x,r2_y,r2_z].
+            in_channels: Number of trajectory channels [x,y,z,sin_yaw,cos_yaw].
             hidden_dim: Hidden dimension for encoder/decoder.
             num_embeddings: Codebook size (K).
             embedding_dim: Dimension of codebook entries (D).
@@ -52,7 +52,7 @@ class TrajectoryVQVAE(nn.Module):
         """Forward pass with loss computation.
         
         Args:
-            x: Input trajectory of shape (B, 9, 64).
+            x: Input trajectory of shape (B, 5, 64).
             
         Returns:
             Dictionary containing:
@@ -61,7 +61,7 @@ class TrajectoryVQVAE(nn.Module):
                 - dynamics_loss: Velocity + acceleration MSE
                 - commitment_loss: VQ commitment loss
                 - perplexity: Codebook utilization metric
-                - reconstruction: Reconstructed trajectory (B, 9, 64)
+                - reconstruction: Reconstructed trajectory (B, 5, 64)
                 - indices: Codebook indices (B, 8)
         """
         # Encode
@@ -124,7 +124,7 @@ class TrajectoryVQVAE(nn.Module):
         """Encode trajectory to discrete codes (for inference).
         
         Args:
-            x: Input trajectory (B, 9, 64).
+            x: Input trajectory (B, 5, 64).
             
         Returns:
             indices: Codebook indices (B, 8).
@@ -141,7 +141,7 @@ class TrajectoryVQVAE(nn.Module):
             z_q: Quantized latents (B, D, 8).
             
         Returns:
-            Reconstructed trajectory (B, 9, 64).
+            Reconstructed trajectory (B, 5, 64).
         """
         return self.decoder(z_q)
 
@@ -152,7 +152,7 @@ class TrajectoryVQVAE(nn.Module):
             indices: Codebook indices (B, 8).
             
         Returns:
-            Reconstructed trajectory (B, 9, 64).
+            Reconstructed trajectory (B, 5, 64).
         """
         # Look up embeddings
         z_q = F.embedding(indices, self.quantizer.embeddings)

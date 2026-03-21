@@ -5,12 +5,12 @@ import torch
 
 
 class TrajectoryAugmentor:
-    """Stochastic augmentation for (9, 64) trajectory tensors.
+    """Stochastic augmentation for (5, 64) trajectory tensors.
 
     Channel layout:
         0-2 : x, y, z  positions
-        3-5 : rotation col-1 (r1_x, r1_y, r1_z)
-        6-8 : rotation col-2 (r2_x, r2_y, r2_z)
+        3   : sin(yaw)
+        4   : cos(yaw)
 
     Each augmentation is applied independently with probability `aug_prob`,
     so not every sample in a batch gets the same transforms.
@@ -33,13 +33,10 @@ class TrajectoryAugmentor:
 
     @staticmethod
     def _mirror_y(feature: torch.Tensor) -> torch.Tensor:
-        """Lateral mirror around the Y-axis (negate y, flip rot cols)."""
+        """Lateral mirror around the Y-axis (negate y, flip heading)."""
         feature = feature.clone()
         feature[1] = -feature[1]       # y position
-        feature[3] = -feature[3]       # r1_x
-        feature[5] = -feature[5]       # r1_z
-        feature[6] = -feature[6]       # r2_x
-        feature[8] = -feature[8]       # r2_z
+        feature[3] = -feature[3]       # sin(yaw) → negating mirrors heading
         return feature
 
     @staticmethod
@@ -51,12 +48,19 @@ class TrajectoryAugmentor:
         rot = torch.tensor([[cos_a, -sin_a], [sin_a, cos_a]], dtype=feature.dtype)
 
         feature = feature.clone()
-        feature[:2] = rot @ feature[:2]      # xyz positions (x, y)
-        feature[3:5] = rot @ feature[3:5]    # rotation col-1 (r1_x, r1_y)
-        feature[6:8] = rot @ feature[6:8]    # rotation col-2 (r2_x, r2_y)
+        # Rotate xy positions
+        feature[:2] = rot @ feature[:2]
+        # Rotate sin/cos yaw via angle-addition identity:
+        #   sin(yaw + a) = sin(yaw)*cos(a) + cos(yaw)*sin(a)
+        #   cos(yaw + a) = cos(yaw)*cos(a) - sin(yaw)*sin(a)
+        sin_yaw = feature[3].clone()
+        cos_yaw = feature[4].clone()
+        feature[3] = sin_yaw * cos_a + cos_yaw * sin_a
+        feature[4] = cos_yaw * cos_a - sin_yaw * sin_a
         return feature
 
     @staticmethod
     def _add_gaussian_noise(feature: torch.Tensor, std: float = 1e-3) -> torch.Tensor:
         """Add tiny Gaussian noise."""
         return feature + torch.randn_like(feature) * std
+

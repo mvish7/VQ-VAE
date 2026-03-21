@@ -15,7 +15,7 @@ class Decoder(nn.Module):
 
     def __init__(
         self,
-        out_channels: int = 9,
+        out_channels: int = 5,
         hidden_dim: int = 256,
         num_groups: int = 32,
     ):

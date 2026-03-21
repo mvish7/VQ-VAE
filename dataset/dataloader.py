@@ -1,6 +1,5 @@
 import torch
-import numpy as np
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import Dataset
 from datasets import load_from_disk
 
 from dataset.augmentation import TrajectoryAugmentor
@@ -27,18 +26,26 @@ class TrajDataset(Dataset):
         return len(self.traj_data)
 
     @staticmethod
-    def convert_rot_mat_to_6d(rot_mat):
-        """Converts 3x3 rotation matrix to 6d continuous rotation (Gram-Schmidt)."""
-        rot_mat_cols = torch.tensor(rot_mat)[:, :, :2]
-        return rot_mat_cols.permute(0, 2, 1).reshape(-1, 6)
+    def extract_yaw_sincos(rot_mat):
+        """Extract yaw from 3x3 rotation matrices as [sin(yaw), cos(yaw)].
+
+        Args:
+            rot_mat: Rotation matrices of shape (T, 3, 3).
+
+        Returns:
+            Tensor of shape (T, 2) containing [sin(yaw), cos(yaw)].
+        """
+        rot = torch.tensor(rot_mat, dtype=torch.float32)
+        yaw = torch.atan2(rot[:, 1, 0], rot[:, 0, 0])
+        return torch.stack([torch.sin(yaw), torch.cos(yaw)], dim=1)
 
     def __getitem__(self, item: int):
         ego_xyz = self.traj_data[item]["ego_future_xyz"][0][0]
         ego_rot = self.traj_data[item]["ego_future_rot"][0][0]
-        # converting 3x3 rotation matrix to 6d rotation (gram schmidt)
-        ego_rot = self.convert_rot_mat_to_6d(ego_rot)
-        # (9, 64) for each sample
-        feature = torch.cat((torch.tensor(ego_xyz), ego_rot), dim=1).T
+        # Extract yaw as sin/cos from rotation matrix
+        ego_yaw_sincos = self.extract_yaw_sincos(ego_rot)
+        # (5, 64) for each sample: [x, y, z, sin_yaw, cos_yaw]
+        feature = torch.cat((torch.tensor(ego_xyz, dtype=torch.float32), ego_yaw_sincos), dim=1).T
 
         if self.augmentor is not None:
             feature = self.augmentor(feature)

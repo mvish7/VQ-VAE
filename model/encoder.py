@@ -14,7 +14,7 @@ class Encoder(nn.Module):
 
     def __init__(
         self,
-        in_channels: int = 9,
+        in_channels: int = 5,
         hidden_dim: int = 256,
         num_groups: int = 32,
     ):
@@ -48,7 +48,7 @@ class Encoder(nn.Module):
         """Encode trajectory to latent representation.
         
         Args:
-            x: Input trajectory of shape (B, 9, 64).
+            x: Input trajectory of shape (B, 5, 64).
             
         Returns:
             Latent representation of shape (B, hidden_dim, 8).

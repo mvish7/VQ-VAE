@@ -78,8 +78,8 @@ def demo_encode_decode(
     logger.info("-" * 65)
 
     for i in range(batch_size):
-        orig = samples[i]                 # (9, 64)
-        recon = recon_from_indices[i]     # (9, 64)
+        orig = samples[i]                 # (5, 64)
+        recon = recon_from_indices[i]     # (5, 64)
 
         mse = F.mse_loss(recon, orig).item()
 

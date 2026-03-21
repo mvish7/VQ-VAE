@@ -22,7 +22,7 @@ config = {
     "max_rot_deg": 2.0,
     "noise_std": 1e-4,
     # Model
-    "in_channels": 9,
+    "in_channels": 5,
     "hidden_dim": 256,
     "num_embeddings": 1024,
     "embedding_dim": 256,
@@ -38,7 +38,7 @@ config = {
     # Paths
     "checkpoint_dir": "checkpoints",
     "log_dir": "runs",
-    "resume_from": "/media/vishal/workspace/projects/VQ-VAE/checkpoints/batch512_aug02_epoch60_perp820/best.pt",  # Set to a path like "checkpoints/last.pt" to resume
+    "resume_from": None,  # Set to a path like "checkpoints/last.pt" to resume
 }
 
 # ── Data ────────────────────────────────────────────────────────────
