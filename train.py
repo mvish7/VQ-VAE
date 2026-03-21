@@ -13,7 +13,7 @@ from trainer import Trainer
 config = {
     # Data
     "dataset_path": "/media/vishal/datasets/ar1_vae_dataset/",
-    "batch_size": 1024,
+    "batch_size": 512,
     "num_workers": 6,
     "train_portion": 1.0,  # how to train data to usr?
     "val_portion": 0.5,  # how much val data to use?
@@ -24,7 +24,7 @@ config = {
     # Model
     "in_channels": 5,
     "hidden_dim": 256,
-    "num_embeddings": 1024,
+    "num_embeddings": 768,
     "embedding_dim": 256,
     "commitment_cost": 0.25,
     "dynamics_weight": 1.0,
@@ -38,7 +38,7 @@ config = {
     # Paths
     "checkpoint_dir": "checkpoints",
     "log_dir": "runs",
-    "resume_from": None,  # Set to a path like "checkpoints/last.pt" to resume
+    "resume_from": "/media/vishal/workspace/projects/VQ-VAE/checkpoints/best.pt",  # Set to a path like "checkpoints/last.pt" to resume
 }
 
 # ── Data ────────────────────────────────────────────────────────────
@@ -77,6 +77,7 @@ model = TrajectoryVQVAE(
     dynamics_weight=config["dynamics_weight"],
     num_groups=config["num_groups"],
 )
+torch._dynamo.config.capture_scalar_outputs = True
 model = torch.compile(model)
 
 # ── Optimizer & Scheduler ───────────────────────────────────────────

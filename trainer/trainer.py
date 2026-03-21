@@ -140,7 +140,7 @@ class Trainer:
             "dynamics_loss": output["dynamics_loss"].item(),
             "commitment_loss": output["commitment_loss"].item(),
             "unit_circle_loss": output["unit_circle_loss"].item(),
-            "perplexity": output["perplexity"],
+            "perplexity": output["perplexity"].item(),
         }
 
         # Release computation graph and GPU memory immediately
@@ -173,7 +173,7 @@ class Trainer:
                 "dynamics_loss": output["dynamics_loss"].item(),
                 "commitment_loss": output["commitment_loss"].item(),
                 "unit_circle_loss": output["unit_circle_loss"].item(),
-                "perplexity": output["perplexity"],
+                "perplexity": output["perplexity"].item(),
             }
             for k, v in metrics.items():
                 accum[k] = accum.get(k, 0.0) + v

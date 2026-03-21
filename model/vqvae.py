@@ -20,7 +20,7 @@ class TrajectoryVQVAE(nn.Module):
         self,
         in_channels: int = 5,
         hidden_dim: int = 256,
-        num_embeddings: int = 1024,
+        num_embeddings: int = 768,
         embedding_dim: int = 256,
         commitment_cost: float = 0.25,
         dynamics_weight: float = 1.0,

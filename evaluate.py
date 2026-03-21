@@ -79,7 +79,7 @@ def evaluate(model: TrajectoryVQVAE, dataloader: DataLoader, device: str) -> dic
         total_acc_mse += F.mse_loss(pred_acc, target_acc).item()
 
         # Codebook
-        total_perplexity += output["perplexity"]
+        total_perplexity += output["perplexity"].item()
         all_indices.append(output["indices"].cpu())
 
         num_batches += 1

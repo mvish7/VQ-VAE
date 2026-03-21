@@ -17,7 +17,7 @@ class VectorQuantizerEMA(nn.Module):
 
     def __init__(
         self,
-        num_embeddings: int = 1024,
+        num_embeddings: int = 768,
         embedding_dim: int = 256,
         commitment_cost: float = 0.25,
         decay: float = 0.99,
@@ -94,7 +94,7 @@ class VectorQuantizerEMA(nn.Module):
         # Perplexity (codebook utilization) — needed for both train and eval metrics
         with torch.no_grad():
             avg_probs = torch.mean(encodings, dim=0)
-            perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10))).item()
+            perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
 
         if self.training:
             # EMA updates — must be no_grad to avoid graph accumulation through buffers
