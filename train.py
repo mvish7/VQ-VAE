@@ -13,7 +13,7 @@ from trainer import Trainer
 config = {
     # Data
     "dataset_path": "/media/vishal/datasets/ar1_vae_dataset/",
-    "batch_size": 512,
+    "batch_size": 1024,
     "num_workers": 6,
     "train_portion": 1.0,  # how to train data to usr?
     "val_portion": 0.5,  # how much val data to use?
@@ -51,6 +51,8 @@ train_loader = DataLoader(
     shuffle=True,
     num_workers=config["num_workers"],
     pin_memory=True,
+    persistent_workers=True,
+    prefetch_factor=4,
 )
 val_loader = DataLoader(
     val_set,
@@ -58,10 +60,13 @@ val_loader = DataLoader(
     shuffle=False,
     num_workers=config["num_workers"],
     pin_memory=True,
+    persistent_workers=True,
+    prefetch_factor=4,
 )
 
 # ── Model ───────────────────────────────────────────────────────────
 device = "cuda" if torch.cuda.is_available() else "cpu"
+torch.backends.cudnn.benchmark = True
 
 model = TrajectoryVQVAE(
     in_channels=config["in_channels"],
@@ -72,6 +77,7 @@ model = TrajectoryVQVAE(
     dynamics_weight=config["dynamics_weight"],
     num_groups=config["num_groups"],
 )
+model = torch.compile(model)
 
 # ── Optimizer & Scheduler ───────────────────────────────────────────
 optimizer = AdamW(

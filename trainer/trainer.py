@@ -39,6 +39,10 @@ class Trainer:
         self.checkpoint_dir = Path(config.get("checkpoint_dir", "checkpoints"))
         self.checkpoint_dir.mkdir(parents=True, exist_ok=True)
 
+        # Mixed precision
+        self.use_amp = device == "cuda"
+        self.scaler = torch.amp.GradScaler(enabled=self.use_amp)
+
         self.writer = SummaryWriter(log_dir=config.get("log_dir", "runs"))
         self.best_val_loss = float("inf")
         self.start_epoch = 0
@@ -117,14 +121,17 @@ class Trainer:
         """Run a single batch."""
 
         batch = batch.to(self.device)
-        output = self.model(batch)
-        loss = output["loss"]
+        with torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=self.use_amp):
+            output = self.model(batch)
+            loss = output["loss"]
 
-        self.optimizer.zero_grad()  # set_to_none=True
-        loss.backward()
+        self.optimizer.zero_grad(set_to_none=True)
+        self.scaler.scale(loss).backward()
         if self.grad_clip > 0:
+            self.scaler.unscale_(self.optimizer)
             nn.utils.clip_grad_norm_(self.model.parameters(), self.grad_clip)
-        self.optimizer.step()
+        self.scaler.step(self.optimizer)
+        self.scaler.update()
 
         # Extract scalar metrics before releasing the computation graph
         metrics = {
@@ -157,7 +164,8 @@ class Trainer:
 
         for batch in self.val_loader:
             batch = batch.to(self.device)
-            output = self.model(batch)
+            with torch.amp.autocast(device_type="cuda", dtype=torch.bfloat16, enabled=self.use_amp):
+                output = self.model(batch)
 
             metrics = {
                 "loss": output["loss"].item(),
