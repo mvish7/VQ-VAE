@@ -72,7 +72,7 @@ class TrajectoryVQVAE(nn.Module):
         z = self.encoder(x)
 
         # Quantize
-        z_q, indices, commitment_loss, perplexity = self.quantizer(z)
+        z_q, indices, commitment_loss, entropy_loss, perplexity = self.quantizer(z)
 
         # Decode
         reconstruction = self.decoder(z_q)
@@ -82,12 +82,13 @@ class TrajectoryVQVAE(nn.Module):
         dynamics_loss = self._compute_dynamics_loss(reconstruction, x)
         unit_circle_loss = self._compute_unit_circle_loss(reconstruction)
 
-        # Total loss: L = L_rec + λ * L_dyn + β * L_commit + γ * L_uc
+        # Total loss: L = L_rec + λ * L_dyn + β * L_commit + γ * L_uc + L_entropy
         total_loss = (
             reconstruction_loss
             + self.dynamics_weight * dynamics_loss
             + commitment_loss
             + self.unit_circle_weight * unit_circle_loss
+            + entropy_loss
         )
 
         return {
@@ -96,6 +97,7 @@ class TrajectoryVQVAE(nn.Module):
             "dynamics_loss": dynamics_loss,
             "commitment_loss": commitment_loss,
             "unit_circle_loss": unit_circle_loss,
+            "entropy_loss": entropy_loss,
             "perplexity": perplexity,
             "reconstruction": reconstruction,
             "indices": indices,
@@ -151,7 +153,7 @@ class TrajectoryVQVAE(nn.Module):
             z_q: Quantized latents (B, D, 8).
         """
         z = self.encoder(x)
-        z_q, indices, _, _ = self.quantizer(z)
+        z_q, indices, _, _, _ = self.quantizer(z)
         return indices, z_q
 
     def decode(self, z_q: torch.Tensor) -> torch.Tensor:
