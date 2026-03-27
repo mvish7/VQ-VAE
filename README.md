@@ -7,7 +7,7 @@ This Trajectory VQ-VAE module acts as a core component for [F2Q-VLA](https://git
 ## 🌟 Key Features
 * **1D ResNet Architecture:** Tailored encoder and decoder blocks specifically designed for sequential trajectory data.
 * **Vector Quantization:** Learns a discrete codebook of trajectory primitives utilizing Exponential Moving Average (EMA) updates.
-* **Commitment & Dynamics Loss:** Ensures stable codebook mappings and accurate trajectory forecasting.
+* **Comprehensive Loss Function:** Incorporates Reconstruction, Dynamics, Commitment, Entropy, and Unit Circle losses to ensure stable mappings, accurate forecasting, diverse codebook usage, and valid 2D yaw representations.
 * **Dead Code Restart:** Automatically reinitializes unused codebook vectors during training to maximize codebook utilization.
 * **On-the-fly Data Augmentation:** Supports random rotation, lateral mirroring, and Gaussian noise injections directly within the DataLoader.
 
@@ -46,12 +46,14 @@ This project uses `uv` for dependency management.
 
 ## 🧠 Model Architecture & Hyperparameters
 The default model configuration defined in `train.py`:
-* **Input Channels:** 9 (Trajectory dimension features)
+* **Input Channels:** 5 (Trajectory features: xyz + 2D yaw)
 * **Hidden Dim:** 256
-* **Number of Embeddings:** 1024 (Codebook size)
+* **Number of Embeddings:** 768 (Codebook size)
 * **Embedding Dimension:** 256
-* **Commitment Cost:** 0.25
+* **Commitment Cost:** 0.10
 * **Dynamics Weight:** 1.0
+* **Unit Circle Weight:** 0.01
+* **Entropy Weight:** 0.5
 
 ## 🚦 Training
 To start training from scratch, run the main training script. Ensure the `dataset_path` in `train.py` points to your downloaded NVIDIA AV dataset.
@@ -67,7 +69,7 @@ To resume training from a specific checkpoint, simply update the `resume_from` k
 The trainer will automatically restore the model weights, optimizer states, learning rate schedules, and the current epoch step.
 
 ### Logging
-Training logs and scalars (loss, reconstruction loss, perplexity) are automatically recorded via Tensorboard. To view the metrics:
+Training logs and scalars (loss, reconstruction, dynamics, commitment, entropy, unit circle, and perplexity) are automatically recorded via Tensorboard. To view the metrics:
 ```bash
 uv run tensorboard --logdir=runs/
 ```
