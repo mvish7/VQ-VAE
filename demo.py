@@ -10,6 +10,7 @@ Usage:
 """
 
 import argparse
+import time
 from pathlib import Path
 
 import torch
@@ -43,7 +44,9 @@ def load_model(checkpoint_path: str, device: str) -> TrajectoryVQVAE:
     """Load trained VQ-VAE from checkpoint."""
     model = TrajectoryVQVAE()
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=True)
-    model.load_state_dict(ckpt["model_state_dict"])
+    # Strip _orig_mod. prefix from torch.compile
+    state_dict = {k.replace("_orig_mod.", ""): v for k, v in ckpt["model_state_dict"].items()}
+    model.load_state_dict(state_dict)
     model.to(device).eval()
     logger.info(f"Loaded checkpoint: {checkpoint_path}")
     return model
@@ -138,13 +141,20 @@ def main():
 
     num_samples = min(args.num_samples, len(test_set))
     samples = torch.stack([test_set[i] for i in range(num_samples)])
+    # logger.info(f"Shape of samples: {samples.shape}")
     logger.info(f"Selected {num_samples} samples, shape: {samples.shape}")
 
     # Demo 1: encode → decode pipeline
+    t1 = time.time()
     demo_encode_decode(model, samples, device)
+    t2 = time.time()
+    logger.info(f"Encode → decode pipeline took: {t2 - t1:.4f} seconds")
 
     # Demo 2: decode from random codebook indices
+    t3 = time.time()
     demo_decode_from_random_codes(model, device)
+    t4 = time.time()
+    logger.info(f"Decode from random codes took: {t4 - t3:.4f} seconds")
 
     logger.info("\nDemo complete.")
 

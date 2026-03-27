@@ -34,7 +34,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--batch_size", type=int, default=512)
     parser.add_argument("--num_workers", type=int, default=6)
-    parser.add_argument("--device", type=str, default=None, help="cuda or cpu")
+    parser.add_argument("--device", type=str, default="cuda", help="cuda or cpu")
     parser.add_argument(
         "--output_dir",
         type=str,
@@ -166,7 +166,9 @@ def main():
     logger.info(f"Loading checkpoint: {checkpoint_path}")
     model = TrajectoryVQVAE()
     ckpt = torch.load(checkpoint_path, map_location=device, weights_only=True)
-    model.load_state_dict(ckpt["model_state_dict"])
+    # Strip _orig_mod. prefix from torch.compile
+    state_dict = {k.replace("_orig_mod.", ""): v for k, v in ckpt["model_state_dict"].items()}
+    model.load_state_dict(state_dict)
     model = model.to(device)
     logger.info("Model loaded successfully")
 
