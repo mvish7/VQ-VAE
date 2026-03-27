@@ -14,11 +14,11 @@ config = {
     # Data
     "dataset_path": "/media/vishal/datasets/ar1_vae_dataset/",
     "batch_size": 512,
-    "num_workers": 6,
+    "num_workers": 8,
     "train_portion": 1.0,  # how to train data to usr?
     "val_portion": 0.5,  # how much val data to use?
     "augment": True,
-    "aug_prob": 0.2,
+    "aug_prob": 0.1,
     "max_rot_deg": 2.0,
     "noise_std": 1e-4,
     # Model
@@ -26,19 +26,21 @@ config = {
     "hidden_dim": 256,
     "num_embeddings": 768,
     "embedding_dim": 256,
-    "commitment_cost": 0.25,
+    "commitment_cost": 0.10,
     "dynamics_weight": 1.0,
+    "unit_circle_weight": 0.01,
+    "entropy_weight": 0.5,
     "num_groups": 32,
     # Training
     "lr": 3e-4,
     "weight_decay": 1e-4,
-    "epochs": 100,
+    "epochs": 50,
     "grad_clip": 1.0,
     "log_interval": 500,
     # Paths
     "checkpoint_dir": "checkpoints",
     "log_dir": "runs",
-    "resume_from": "/media/vishal/workspace/projects/VQ-VAE/checkpoints/best.pt",  # Set to a path like "checkpoints/last.pt" to resume
+    "resume_from": "/media/vishal/workspace/projects/VQ-VAE/checkpoints/epoch7_best.pt",  # Set to a path like "checkpoints/last.pt" to resume
 }
 
 # ── Data ────────────────────────────────────────────────────────────
@@ -75,6 +77,7 @@ model = TrajectoryVQVAE(
     embedding_dim=config["embedding_dim"],
     commitment_cost=config["commitment_cost"],
     dynamics_weight=config["dynamics_weight"],
+    unit_circle_weight=config.get("unit_circle_weight", 0.05),
     num_groups=config["num_groups"],
 )
 torch._dynamo.config.capture_scalar_outputs = True

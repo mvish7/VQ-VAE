@@ -19,10 +19,11 @@ class VectorQuantizerEMA(nn.Module):
         self,
         num_embeddings: int = 768,
         embedding_dim: int = 256,
-        commitment_cost: float = 0.25,
-        decay: float = 0.99,
+        commitment_cost: float = 0.5,
+        decay: float = 0.95,
         epsilon: float = 1e-5,
         dead_code_threshold: int = 2,
+        entropy_weight: float = 0.01,
     ):
         """Initialize VectorQuantizerEMA.
         
@@ -33,6 +34,7 @@ class VectorQuantizerEMA(nn.Module):
             decay: EMA decay rate.
             epsilon: Small constant for numerical stability.
             dead_code_threshold: Re-init codes unused for this many batches.
+            entropy_weight: Weight for entropy maximization loss.
         """
         super().__init__()
         self.num_embeddings = num_embeddings
@@ -41,6 +43,7 @@ class VectorQuantizerEMA(nn.Module):
         self.decay = decay
         self.epsilon = epsilon
         self.dead_code_threshold = dead_code_threshold
+        self.entropy_weight = entropy_weight
 
         # Codebook embeddings (not updated via gradients)
         self.register_buffer("embeddings", torch.randn(num_embeddings, embedding_dim))
@@ -55,7 +58,7 @@ class VectorQuantizerEMA(nn.Module):
 
     def forward(
         self, z: torch.Tensor
-    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, float]:
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor, torch.Tensor, float]:
         """Quantize continuous features to discrete codebook entries.
         
         Args:
@@ -64,7 +67,8 @@ class VectorQuantizerEMA(nn.Module):
         Returns:
             quantized: Quantized tensor (B, D, T) with gradients via STE.
             indices: Codebook indices (B, T).
-            loss: Commitment loss term.
+            commitment_loss: Commitment loss term.
+            entropy_loss: Entropy maximization loss.
             perplexity: Codebook utilization metric.
         """
         # (B, D, T) -> (B, T, D) -> (B*T, D)
@@ -89,9 +93,19 @@ class VectorQuantizerEMA(nn.Module):
 
         # Commitment loss — needed for both train and eval metrics
         e_latent_loss = F.mse_loss(quantized.detach(), z)
-        loss = self.commitment_cost * e_latent_loss
+        commitment_loss = self.commitment_cost * e_latent_loss
 
-        # Perplexity (codebook utilization) — needed for both train and eval metrics
+        # Perplexity & Entropy (codebook utilization)
+        # Note: we need gradients to flow through encodings for entropy loss,
+        # but argmin -> one_hot is non-differentiable.
+        # We approximate the soft assignment probabilities using softmax over negative distances.
+        # (Softmax temperature controls sharpness)
+        soft_probs = F.softmax(-distances, dim=1)
+        avg_soft_probs = torch.mean(soft_probs, dim=0)
+
+        # We want to MAXIMIZE entropy, which means MINIMIZING negative entropy.
+        entropy_loss = self.entropy_weight * torch.sum(avg_soft_probs * torch.log(avg_soft_probs + 1e-10))
+
         with torch.no_grad():
             avg_probs = torch.mean(encodings, dim=0)
             perplexity = torch.exp(-torch.sum(avg_probs * torch.log(avg_probs + 1e-10)))
@@ -109,7 +123,7 @@ class VectorQuantizerEMA(nn.Module):
         quantized = quantized.permute(0, 2, 1).contiguous()
         indices = indices.view(batch_size, seq_len)
 
-        return quantized, indices, loss, perplexity
+        return quantized, indices, commitment_loss, entropy_loss, perplexity
 
     def _update_ema(self, flat_z: torch.Tensor, encodings: torch.Tensor) -> None:
         """Update codebook via EMA."""

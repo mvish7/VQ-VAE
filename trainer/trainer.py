@@ -112,6 +112,7 @@ class Trainer:
                     f"dyn={metrics['dynamics_loss']:.4f} | "
                     f"commit={metrics['commitment_loss']:.4f} | "
                     f"uc={metrics['unit_circle_loss']:.4f} | "
+                    f"ent={metrics['entropy_loss']:.4f} | "
                     f"perp={metrics['perplexity']:.1f}"
                 )
 
@@ -140,6 +141,7 @@ class Trainer:
             "dynamics_loss": output["dynamics_loss"].item(),
             "commitment_loss": output["commitment_loss"].item(),
             "unit_circle_loss": output["unit_circle_loss"].item(),
+            "entropy_loss": output["entropy_loss"].item(),
             "perplexity": output["perplexity"].item(),
         }
 
@@ -150,6 +152,7 @@ class Trainer:
         self.writer.add_scalar("step/loss", metrics["loss"], self.global_step)
         self.writer.add_scalar("step/reconstruction_loss", metrics["reconstruction_loss"], self.global_step)
         self.writer.add_scalar("step/commitment_loss", metrics["commitment_loss"], self.global_step)
+        self.writer.add_scalar("step/entropy_loss", metrics["entropy_loss"], self.global_step)
         self.writer.add_scalar("step/perplexity", metrics["perplexity"], self.global_step)
         self.global_step += 1
 
@@ -173,6 +176,7 @@ class Trainer:
                 "dynamics_loss": output["dynamics_loss"].item(),
                 "commitment_loss": output["commitment_loss"].item(),
                 "unit_circle_loss": output["unit_circle_loss"].item(),
+                "entropy_loss": output["entropy_loss"].item(),
                 "perplexity": output["perplexity"].item(),
             }
             for k, v in metrics.items():
@@ -196,14 +200,34 @@ class Trainer:
 
         if val_recon_loss < self.best_val_loss:
             self.best_val_loss = val_recon_loss
+            
+            # Save new best model with epoch number
+            best_path = self.checkpoint_dir / f"epoch{epoch + 1}_best.pt"
+            torch.save(state, best_path)
+            
+            # Optionally also update a generic "best.pt" symlink or copy if desired, 
+            # but per request, we just save with epoch num to avoid overwriting.
             torch.save(state, self.checkpoint_dir / "best.pt")
-            logger.info(f"  ✓ New best model saved (val_recon={val_recon_loss:.4f})")
+            
+            logger.info(f"  ✓ New best model saved to {best_path.name} (val_recon={val_recon_loss:.4f})")
 
     def _load_checkpoint(self, path: str) -> None:
         """Resume training from checkpoint."""
         logger.info(f"Resuming from {path}")
         ckpt = torch.load(path, map_location=self.device, weights_only=True)
-        self.model.load_state_dict(ckpt["model_state_dict"])
+        state_dict = ckpt["model_state_dict"]
+        
+        # Handle torch.compile prefix mismatch for resuming
+        model_keys = self.model.state_dict().keys()
+        model_is_compiled = any(k.startswith("_orig_mod.") for k in model_keys)
+        ckpt_is_compiled = any(k.startswith("_orig_mod.") for k in state_dict.keys())
+
+        if model_is_compiled and not ckpt_is_compiled:
+            state_dict = {"_orig_mod." + k: v for k, v in state_dict.items()}
+        elif not model_is_compiled and ckpt_is_compiled:
+            state_dict = {k.replace("_orig_mod.", ""): v for k, v in state_dict.items()}
+
+        self.model.load_state_dict(state_dict)
         self.optimizer.load_state_dict(ckpt["optimizer_state_dict"])
         self.scheduler.load_state_dict(ckpt["scheduler_state_dict"])
         self.best_val_loss = ckpt["best_val_loss"]
